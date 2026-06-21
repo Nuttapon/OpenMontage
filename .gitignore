@@ -81,3 +81,7 @@ remotion-composer/public/demo-props/talking-head-*
 remotion-composer/public/demo-props/caption-burn-*
 
 .codebase-memory/
+
+# Piper TTS voice models (downloaded, regenerable)
+*.onnx
+*.onnx.json

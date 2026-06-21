@@ -6,6 +6,13 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { loadFont as loadNotoSansThai } from "@remotion/google-fonts/NotoSansThai";
+import { buildCaptionPages } from "../utils/caption-pages.mjs";
+
+const { fontFamily: thaiFontFamily } = loadNotoSansThai("normal", {
+  weights: ["400", "700"],
+  subsets: ["thai", "latin"],
+});
 
 // Word-level caption for TikTok-style highlight display
 export interface WordCaption {
@@ -25,28 +32,8 @@ interface CaptionOverlayProps {
   fontFamily?: string;
 }
 
-interface CaptionPage {
-  words: WordCaption[];
-  startMs: number;
-  endMs: number;
-}
-
-function buildPages(words: WordCaption[], wordsPerPage: number): CaptionPage[] {
-  const pages: CaptionPage[] = [];
-  for (let i = 0; i < words.length; i += wordsPerPage) {
-    const pageWords = words.slice(i, i + wordsPerPage);
-    if (pageWords.length === 0) continue;
-    pages.push({
-      words: pageWords,
-      startMs: pageWords[0].startMs,
-      endMs: pageWords[pageWords.length - 1].endMs,
-    });
-  }
-  return pages;
-}
-
 const PageRenderer: React.FC<{
-  page: CaptionPage;
+  page: { words: WordCaption[]; startMs: number; endMs: number };
   fontSize: number;
   color: string;
   highlightColor: string;
@@ -124,10 +111,14 @@ export const CaptionOverlay: React.FC<CaptionOverlayProps> = ({
   color = "#F8FAFC",
   highlightColor = "#22D3EE",
   backgroundColor = "rgba(15, 23, 42, 0.75)",
-  fontFamily = "Space Grotesk, Inter, system-ui, sans-serif",
+  fontFamily = `${thaiFontFamily}, Thonburi, "Sukhumvit Set", sans-serif`,
 }) => {
   const { fps } = useVideoConfig();
-  const pages = buildPages(words, wordsPerPage);
+  const pages = buildCaptionPages(words, wordsPerPage) as Array<{
+    words: WordCaption[];
+    startMs: number;
+    endMs: number;
+  }>;
 
   return (
     <AbsoluteFill>

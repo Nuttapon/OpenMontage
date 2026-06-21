@@ -5,18 +5,27 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { loadFont as loadNotoSansThai } from "@remotion/google-fonts/NotoSansThai";
+import { segmentGraphemes } from "../utils/thai-graphemes.mjs";
 
 interface HeroTitleProps {
   title: string;
   subtitle?: string;
 }
 
+const { fontFamily: thaiFontFamily } = loadNotoSansThai("normal", {
+  weights: ["400", "700", "800"],
+  subsets: ["thai", "latin"],
+});
+
+const THAI_FONT_STACK = `${thaiFontFamily}, Thonburi, "Sukhumvit Set", sans-serif`;
+
 export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Staggered letter-by-letter spring
-  const titleChars = title.split("");
+  // Keep Thai combining marks attached to their base character while animating.
+  const titleChars = segmentGraphemes(title);
 
   return (
     <AbsoluteFill
@@ -33,7 +42,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
           style={{
             fontSize: 72,
             fontWeight: 800,
-            fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
+            fontFamily: THAI_FONT_STACK,
             lineHeight: 1.2,
             display: "flex",
             justifyContent: "center",
@@ -56,7 +65,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
                   display: "inline-block",
                   opacity: charSpring,
                   transform: `translateY(${interpolate(charSpring, [0, 1], [30, 0])}px)`,
-                  color: i < 8 ? "#22D3EE" : "#F8FAFC", // Accent first word
+                  color: i < 8 ? "#22D3EE" : "#F8FAFC",
                   whiteSpace: char === " " ? "pre" : undefined,
                   minWidth: char === " " ? "0.3em" : undefined,
                 }}
@@ -80,9 +89,8 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
               fontSize: 28,
               fontWeight: 400,
               color: "#A78BFA",
-              fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
+              fontFamily: THAI_FONT_STACK,
+              letterSpacing: 0,
             }}
           >
             {subtitle}
