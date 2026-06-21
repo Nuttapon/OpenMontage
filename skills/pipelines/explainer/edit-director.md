@@ -77,7 +77,31 @@ Subtitles are mandatory for all explainer content:
 }
 ```
 
-**Subtitle timing**: Derive from narration audio timestamps. Each word should highlight as it's spoken (word-by-word style) or display in phrase chunks (phrase style).
+**Subtitle timing (HARD RULE — read this):** Caption `startMs`/`endMs` MUST be
+derived from a forced-alignment pass over the **actual generated narration
+audio**, never estimated from text length, word count, or by evenly dividing the
+total duration across phrases.
+
+Required procedure:
+
+1. Run `transcriber` on the final narration MP3 to get word-level timestamps.
+   - If `transcriber` is `unavailable` (faster-whisper not installed) and the
+     narration is Thai or another language whisper handles poorly, use the
+     ElevenLabs **Scribe v2** speech-to-text path (`.agents/skills/speech-to-text`,
+     `ELEVENLABS_API_KEY`) — it returns character/word timestamps and supports
+     Thai. Do NOT fall back to estimated timing.
+2. Build caption phrases by grouping the aligned words; set each phrase's
+   `startMs` to the first word's onset and `endMs` to the next phrase's onset
+   (or the last word's end for the final phrase).
+3. Sanity-check before checkpointing: the last caption's `endMs` must be within
+   ~1s of the narration audio duration, and caption durations must vary (a set of
+   identical durations means you evenly split — that is the bug, re-do it).
+
+**Why this matters:** evenly-split or text-estimated caption timing drifts out of
+sync with the voice from the very first line and gets worse over the clip. The
+compose self-review now hard-fails renders whose captions are even-split or whose
+span doesn't match the narration ("caption timing not aligned" / "caption span
+mismatch"), so unaligned captions will block the render rather than ship.
 
 Use the playbook's typography for font choices.
 

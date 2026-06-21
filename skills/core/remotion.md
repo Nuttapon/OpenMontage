@@ -141,6 +141,13 @@ result = CompositionValidator().execute({
 - Use `tools.analysis.audio_probe.probe_duration(path)` to check any audio file's duration.
 - Music should be ≥ video duration; the player handles fade-out via `fadeOutSeconds`.
 
+### Thai and Other Combining-Script Text
+
+- Load a font with the required script subset. For Thai, use `Noto Sans Thai` (or a verified Thai-capable font) for titles, overlays, and captions.
+- Never animate text with `split("")`; it separates combining marks from their base characters. Segment by grapheme cluster with `Intl.Segmenter(..., {granularity: "grapheme"})` instead.
+- Caption timings must come from TTS word timestamps or transcription. Never spread Thai captions evenly by whitespace or character count.
+- If word timestamps are unavailable, create short phrase captions from detected silence boundaries, then render and inspect an opening-title sample and a mid-narration sample before the full render.
+
 ## Architecture
 
 ```

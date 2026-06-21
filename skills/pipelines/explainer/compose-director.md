@@ -255,6 +255,10 @@ Subtitles are mandatory for all explainer content. Generate them from the narrat
    `captionHighlightColor` and `captionBackgroundColor`. This is superior to FFmpeg SRT burn because
    it produces animated word-level highlighting synchronized to narration.
 
+   **Timing fallback:** If transcription or TTS word timestamps are unavailable, do not distribute captions uniformly across the narration duration. Run silence detection on the narration, map one short phrase to each measured speech interval, and render a mid-narration sample to confirm sync before the full render.
+
+   **Thai typography:** Load a Thai-capable font such as `Noto Sans Thai` for captions and overlays. For animated title text, segment by grapheme cluster with `Intl.Segmenter`; never use `split("")`, which detaches Thai tone marks and vowels.
+
 **FFmpeg fallback (ONLY when Remotion is unavailable):**
 
 If Remotion is not available, fall back to SRT generation + FFmpeg burn:
@@ -285,6 +289,10 @@ result = CompositionValidator().execute({
 # result.data['valid'] MUST be True before proceeding to render
 # If False: fix the reported errors first (missing assets, audio-video mismatch, etc.)
 ```
+
+For any non-Latin narration, render and inspect two stills after validation and before the full render:
+1. An opening title frame, to verify font shaping and diacritics.
+2. A mid-narration frame, to verify caption readability and timing against the audio.
 
 Common catches:
 - Narration audio longer than video (would be cut off)

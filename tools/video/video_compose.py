@@ -1895,6 +1895,19 @@ class VideoCompose(BaseTool):
 
         issues.extend(subtitle_check.get("issues", []))
 
+        # --- 5b. Caption-sync check ---
+        # Catches captions that were never aligned to the actual narration
+        # audio — the "subtitles drift out of sync from the start" class of
+        # bug. Two failure modes, both detectable structurally (no transcriber
+        # needed at review time):
+        #   1. Even-split fabrication: every caption has an identical duration,
+        #      which means timing was distributed evenly across N phrases
+        #      instead of derived from speech onsets.
+        #   2. Audio-span mismatch: the captions do not span the narration
+        #      (they end well before, or well after, the actual voice track).
+        caption_sync = self._check_caption_sync(edit_decisions, output_path)
+        issues.extend(caption_sync.get("issues", []))
+
         # --- 6. Transcript-vs-script comparison ---
         # Catches content-level TTS failures (the classic "Chirp reads `...`
         # as the word 'dot'" trap) that volume-based audio checks miss.
@@ -1913,6 +1926,8 @@ class VideoCompose(BaseTool):
                 "silent downgrade", "delivery promise violation",
                 "effectively silent", "ffprobe failed", "suspiciously short",
                 "tts punctuation leak",  # reading literal punctuation aloud
+                "caption timing not aligned",  # even-split / unaligned captions
+                "caption span mismatch",  # captions don't cover the narration
             ])
         ]
 
@@ -1952,6 +1967,114 @@ class VideoCompose(BaseTool):
         )
 
         return final_review
+
+    def _check_caption_sync(
+        self,
+        edit_decisions: dict[str, Any] | None,
+        output_path: Path,
+    ) -> dict[str, Any]:
+        """Validate caption timing was aligned to the narration, not faked.
+
+        Returns a dict with `issues`. Two failure modes are flagged as
+        critical (the keyword strings are matched by the critical-issue
+        filter in `_run_final_review`):
+
+        - "caption timing not aligned": every caption shares one duration,
+          i.e. timing was evenly distributed instead of force-aligned.
+        - "caption span mismatch": the last caption ends far from the
+          actual narration audio duration.
+        """
+        result: dict[str, Any] = {
+            "captions_checked": 0,
+            "even_split_detected": False,
+            "narration_duration": None,
+            "caption_span": None,
+            "issues": [],
+        }
+        if not edit_decisions:
+            return result
+
+        captions = edit_decisions.get("captions") or []
+        captions = [c for c in captions if "startMs" in c and "endMs" in c]
+        result["captions_checked"] = len(captions)
+        if len(captions) < 3:
+            return result
+
+        # Mode 1: even-split fabrication. Real speech never produces N
+        # phrases of identical duration; an even split does exactly that.
+        durations = [c["endMs"] - c["startMs"] for c in captions]
+        spread_ms = max(durations) - min(durations)
+        if spread_ms <= 2:
+            result["even_split_detected"] = True
+            result["issues"].append(
+                "caption timing not aligned: all captions share an identical "
+                f"duration (~{durations[0]}ms). Captions were distributed "
+                "evenly across phrases instead of aligned to the narration "
+                "audio. Re-derive timing from word-level timestamps "
+                "(transcriber / forced alignment), never from text length."
+            )
+
+        # Mode 2: caption span vs narration audio duration.
+        caption_span = max(c["endMs"] for c in captions) / 1000.0
+        result["caption_span"] = round(caption_span, 2)
+        narration_dur = self._probe_narration_duration(edit_decisions, output_path)
+        if narration_dur and narration_dur > 0:
+            result["narration_duration"] = round(narration_dur, 2)
+            drift = abs(caption_span - narration_dur)
+            # >1.5s absolute drift, or captions covering <80% of the voice,
+            # means the captions and the spoken track are not the same length.
+            if drift > 1.5 or caption_span < narration_dur * 0.8:
+                result["issues"].append(
+                    "caption span mismatch: captions span "
+                    f"{caption_span:.1f}s but narration audio is "
+                    f"{narration_dur:.1f}s ({drift:.1f}s off). Subtitles will "
+                    "drift against the voice. Re-align captions to the "
+                    "narration audio."
+                )
+        return result
+
+    def _probe_narration_duration(
+        self,
+        edit_decisions: dict[str, Any],
+        output_path: Path,
+    ) -> float | None:
+        """Best-effort resolution + probe of the narration audio duration.
+
+        The narration `src` in edit_decisions may be an absolute path, a
+        staticFile-relative path (served from remotion-composer/public), or a
+        project-relative path. Try the plausible roots and probe the first
+        that exists.
+        """
+        src = (
+            (edit_decisions.get("audio") or {}).get("narration") or {}
+        ).get("src")
+        if not src:
+            return None
+
+        candidates = [Path(src)]
+        if not Path(src).is_absolute():
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            candidates += [
+                repo_root / "remotion-composer" / "public" / src,
+                repo_root / src,
+                output_path.parent / src,
+            ]
+        audio_path = next((p for p in candidates if p.exists()), None)
+        if not audio_path:
+            return None
+        try:
+            proc = subprocess.run(
+                [
+                    "ffprobe", "-v", "quiet", "-show_entries",
+                    "format=duration", "-of", "csv=p=0", str(audio_path),
+                ],
+                capture_output=True, text=True, timeout=15,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                return float(proc.stdout.strip())
+        except (ValueError, OSError, subprocess.SubprocessError):
+            pass
+        return None
 
     @staticmethod
     def _parse_probe_fps(fps_str: str) -> float:

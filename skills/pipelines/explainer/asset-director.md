@@ -24,6 +24,14 @@ Quick routing for common explainer needs:
 
 **The keep-it-simple bias:** if Remotion primitives solve a scene in ≤ 20 lines, use them. Only pull in GSAP when the plugin genuinely earns its bundle weight.
 
+### Non-Latin Typography and Captions
+
+For Thai or any script with combining marks:
+- Select and load a font that explicitly supports the target script for every text layer.
+- Do not split text with `split("")` for staggered animation; use grapheme clusters so vowels and tone marks remain attached.
+- Prefer TTS word timestamps for captions. If the selected provider does not return them, detect pauses in the final narration and build one short phrase per caption page; never infer timing from whitespace or character counts.
+- Render one title frame and one mid-narration caption frame for approval before batching the full composition.
+
 ## Prerequisites
 
 | Layer | Resource | Purpose |
