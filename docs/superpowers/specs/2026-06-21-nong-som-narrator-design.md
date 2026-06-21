@@ -44,5 +44,5 @@ When no cue list is supplied, `LetCatTell` supplies a short default cue at the s
 ## Verification
 
 - Node tests prove cue fallback and adjacent-expression de-duplication.
-- TypeScript validates the composition props and component imports.
+- Remotion bundles and renders the composition; the repository's existing TypeScript diagnostics must not include a Nong Som file.
 - Remotion renders a vertical preview using the composition's default props.

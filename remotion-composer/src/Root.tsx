@@ -16,6 +16,7 @@ import { ProductReveal, ProductRevealProps } from "./components/ProductReveal";
 import { CaptionOverlay, WordCaption } from "./components/CaptionOverlay";
 import { CollageBurst, CollageBurstProps } from "./CollageBurst";
 import { LyricOverlay, LyricOverlayProps } from "./LyricOverlay";
+import { LetCatTell, LetCatTellProps } from "./LetCatTell";
 
 // ---------------------------------------------------------------------------
 // Theme System — prevents every video from looking like dark fintech
@@ -149,6 +150,23 @@ export const Root: React.FC = () => {
           audio: {},
         }}
         calculateMetadata={calculateMetadata}
+      />
+      <Composition
+        id="LetCatTell"
+        component={LetCatTell}
+        durationInFrames={30 * 60}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          cuts: [],
+          overlays: [],
+          captions: [],
+          audio: {},
+          mascotCues: [
+            { inSeconds: 0, outSeconds: 2.4, expression: "interested", position: "right", entrance: "pop" },
+          ],
+        } as LetCatTellProps}
       />
       <Composition
         id="CinematicRenderer"
