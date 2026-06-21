@@ -736,8 +736,13 @@ class VideoCompose(BaseTool):
             # Derive caption colors from the palette. Use the accent (the
             # palette's vibrant "pop" color) for the active-word highlight so
             # captions read as part of the video's theme instead of a clashing
-            # default cyan.
-            theme["captionHighlightColor"] = accent
+            # default cyan. Prefer the composition's own accent_color when set —
+            # it reflects this specific video's chosen direction, which can
+            # differ from the generic playbook palette.
+            meta_accent = (composition_data or {}).get("metadata", {}).get(
+                "accent_color"
+            )
+            theme["captionHighlightColor"] = meta_accent or accent
             # Caption background: semi-transparent version of the bg color
             theme["captionBackgroundColor"] = (
                 f"rgba(255, 255, 255, 0.85)" if bg.upper() in ("#FFFFFF", "#FAFAFA", "#F9FAFB")
