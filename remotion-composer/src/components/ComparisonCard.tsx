@@ -5,6 +5,41 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { loadFont as loadNotoSansThai } from "@remotion/google-fonts/NotoSansThai";
+
+const { fontFamily: thaiFontFamily } = loadNotoSansThai("normal", {
+  weights: ["400", "600", "700", "800"],
+  subsets: ["thai", "latin"],
+});
+
+// Thai needs a proper webfont with full glyph coverage (Inter ships no Thai
+// glyphs, so it silently falls back to an inconsistent system font and clips
+// tone marks). Default to Noto Sans Thai for correct rendering.
+const DEFAULT_FONT_FAMILY = `${thaiFontFamily}, Inter, system-ui, sans-serif`;
+
+// Relative luminance of a CSS color (#rgb/#rrggbb/rgb()/rgba()), used to pick
+// label text that contrasts the *card* — the labels sit inside the light card,
+// not over the video, so they must not inherit the white over-video text color.
+const colorLuminance = (color: string): number => {
+  let r = 255,
+    g = 255,
+    b = 255;
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    let h = hex[1];
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    r = parseInt(h.slice(0, 2), 16);
+    g = parseInt(h.slice(2, 4), 16);
+    b = parseInt(h.slice(4, 6), 16);
+  } else {
+    const m = color.match(/rgba?\(([^)]+)\)/i);
+    if (m) {
+      const parts = m[1].split(",").map((s) => parseFloat(s));
+      [r, g, b] = parts;
+    }
+  }
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+};
 
 type ChangeDirection = "up" | "down" | "neutral";
 
@@ -40,13 +75,18 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
   backgroundColor = "#FFFFFF",
   cardBackgroundColor = "#F3F4F6",
   textColor = "#1F2937",
-  fontFamily = "Inter, system-ui, sans-serif",
+  fontFamily = DEFAULT_FONT_FAMILY,
   titleFontSize = 44,
-  labelFontSize = 28,
-  valueFontSize = 72,
+  labelFontSize = 26,
+  valueFontSize = 54,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+
+  // Labels live inside the card, so contrast against the card, not the video.
+  // (textColor is the over-video color and is often white — invisible here.)
+  const cardIsLight = colorLuminance(cardBackgroundColor) > 0.55;
+  const labelColor = cardIsLight ? "#475569" : "rgba(255,255,255,0.9)";
 
   // Phase 1: Title + left side appears
   const titleOpacity = spring({
@@ -159,6 +199,7 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
               color: textColor,
               textAlign: "center",
               opacity: titleOpacity,
+              lineHeight: 1.3,
               letterSpacing: "-0.02em",
             }}
           >
@@ -175,9 +216,12 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
             width: "100%",
             borderRadius: 16,
             backgroundColor: cardBackgroundColor,
-            overflow: "hidden",
+            // `visible` so Thai tone marks / long wrapped values are never
+            // clipped by the rounded container; padding keeps text off corners.
+            overflow: "visible",
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             minHeight: 280,
+            height: "auto",
           }}
         >
           {/* Left side */}
@@ -209,10 +253,10 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                 fontFamily,
                 fontWeight: 600,
                 fontSize: labelFontSize,
-                color: textColor,
-                opacity: 0.7,
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.05em",
+                color: labelColor,
+                lineHeight: 1.35,
+                textAlign: "center" as const,
+                letterSpacing: "0.02em",
               }}
             >
               {leftLabel}
@@ -223,7 +267,12 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                 fontWeight: 800,
                 fontSize: valueFontSize,
                 color: leftColor,
-                lineHeight: 1.1,
+                // Thai stacks vowels/tone marks above & below the base glyph;
+                // 1.1 clips them. 1.34 gives the marks room on wrapped lines.
+                lineHeight: 1.34,
+                textAlign: "center" as const,
+                overflowWrap: "break-word" as const,
+                maxWidth: "100%",
               }}
             >
               {leftValue}
@@ -333,10 +382,10 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                 fontFamily,
                 fontWeight: 600,
                 fontSize: labelFontSize,
-                color: textColor,
-                opacity: 0.7,
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.05em",
+                color: labelColor,
+                lineHeight: 1.35,
+                textAlign: "center" as const,
+                letterSpacing: "0.02em",
               }}
             >
               {rightLabel}
@@ -347,7 +396,10 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                 fontWeight: 800,
                 fontSize: valueFontSize,
                 color: rightColor,
-                lineHeight: 1.1,
+                lineHeight: 1.34,
+                textAlign: "center" as const,
+                overflowWrap: "break-word" as const,
+                maxWidth: "100%",
               }}
             >
               {rightValue}

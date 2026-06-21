@@ -65,10 +65,14 @@ const PageRenderer: React.FC<{
           opacity: entrance,
           transform: `translateY(${interpolate(entrance, [0, 1], [20, 0])}px)`,
           backgroundColor,
-          borderRadius: 12,
-          padding: "14px 28px",
-          maxWidth: "80%",
+          borderRadius: 16,
+          padding: "18px 34px",
+          maxWidth: "86%",
           textAlign: "center",
+          // Soft lift off the video so the pill reads as a caption, not part
+          // of the footage.
+          boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
+          backdropFilter: "blur(2px)",
         }}
       >
         <span
@@ -76,8 +80,11 @@ const PageRenderer: React.FC<{
             fontSize,
             fontWeight: 700,
             fontFamily,
-            lineHeight: 1.4,
+            lineHeight: 1.45,
             whiteSpace: "pre-wrap",
+            // Crisp dark edge keeps Thai legible over bright video frames.
+            WebkitTextStroke: "1px rgba(0,0,0,0.35)",
+            paintOrder: "stroke fill",
           }}
         >
           {page.words.map((w, i) => {
@@ -107,10 +114,10 @@ const PageRenderer: React.FC<{
 export const CaptionOverlay: React.FC<CaptionOverlayProps> = ({
   words,
   wordsPerPage = 6,
-  fontSize = 42,
+  fontSize = 50,
   color = "#F8FAFC",
   highlightColor = "#22D3EE",
-  backgroundColor = "rgba(15, 23, 42, 0.75)",
+  backgroundColor = "rgba(15, 23, 42, 0.85)",
   fontFamily = `${thaiFontFamily}, Thonburi, "Sukhumvit Set", sans-serif`,
 }) => {
   const { fps } = useVideoConfig();

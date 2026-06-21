@@ -815,7 +815,7 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
         <CaptionOverlay
           words={captions}
           wordsPerPage={captionWordsPerPage ?? 6}
-          fontSize={42}
+          fontSize={50}
           highlightColor={theme.captionHighlightColor}
           backgroundColor={theme.captionBackgroundColor}
         />
