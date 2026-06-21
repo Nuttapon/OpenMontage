@@ -733,8 +733,11 @@ class VideoCompose(BaseTool):
                 "transitionDuration": 0.4,
             }
 
-            # Derive caption colors from the palette
-            theme["captionHighlightColor"] = primary
+            # Derive caption colors from the palette. Use the accent (the
+            # palette's vibrant "pop" color) for the active-word highlight so
+            # captions read as part of the video's theme instead of a clashing
+            # default cyan.
+            theme["captionHighlightColor"] = accent
             # Caption background: semi-transparent version of the bg color
             theme["captionBackgroundColor"] = (
                 f"rgba(255, 255, 255, 0.85)" if bg.upper() in ("#FFFFFF", "#FAFAFA", "#F9FAFB")
@@ -768,7 +771,7 @@ class VideoCompose(BaseTool):
                     "chartColors": meta.get("chart_colors", ["#2563EB", "#F59E0B", "#10B981"]),
                     "springConfig": {"damping": 20, "stiffness": 120, "mass": 1},
                     "transitionDuration": 0.4,
-                    "captionHighlightColor": meta["primary_color"],
+                    "captionHighlightColor": meta.get("accent_color", "#F59E0B"),
                     "captionBackgroundColor": "rgba(255, 255, 255, 0.85)",
                 }
 
