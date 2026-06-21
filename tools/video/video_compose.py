@@ -1348,7 +1348,7 @@ class VideoCompose(BaseTool):
         composition_id = self._get_composition_id(renderer_family)
 
         cmd = [
-            "npx", "remotion", "render",
+            "npm", "exec", "--", "remotion", "render",
             str(composer_dir / "src" / "index.tsx"),
             composition_id,
             str(output_path),

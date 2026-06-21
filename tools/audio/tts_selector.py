@@ -47,7 +47,7 @@ class TTSSelector(BaseTool):
             },
             "model_id": {
                 "type": "string",
-                "description": "TTS model to use (e.g. eleven_multilingual_v2). Passed through to provider.",
+                "description": "TTS model to use (e.g. eleven_v3 for Thai/multilingual). Passed through to provider.",
             },
             "stability": {
                 "type": "number", "minimum": 0, "maximum": 1,

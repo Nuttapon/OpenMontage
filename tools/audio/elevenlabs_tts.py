@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
+
+# eleven_multilingual_v2 does NOT support Thai. eleven_v3 supports Thai + 70 langs.
+THAI_CAPABLE_MODEL = "eleven_v3"
+_THAI_CHAR_RE = re.compile(r"[฀-๿]")
+
+
+def _contains_thai(text: str) -> bool:
+    return bool(_THAI_CHAR_RE.search(text or ""))
 
 from tools.base_tool import (
     BaseTool,
@@ -58,6 +67,7 @@ class ElevenLabsTTS(BaseTool):
         "high-quality narration",
         "voice-sensitive spokesperson videos",
         "multilingual spoken delivery",
+        "Thai narration (via eleven_v3)",
     ]
     not_good_for = [
         "fully offline production",
@@ -71,22 +81,26 @@ class ElevenLabsTTS(BaseTool):
             "text": {"type": "string", "description": "Text to convert to speech"},
             "voice_id": {
                 "type": "string",
-                "description": "ElevenLabs voice ID (default: Rachel)",
+                "description": "ElevenLabs voice ID (default: Brian — soft, clear male narration)",
             },
             "model_id": {
                 "type": "string",
-                "default": "eleven_multilingual_v2",
-                "description": "TTS model to use",
+                "default": "eleven_v3",
+                "description": (
+                    "TTS model to use. Defaults to eleven_v3 (Thai + 70 languages, "
+                    "expressive). Thai text is always routed to eleven_v3 regardless of "
+                    "this value, since eleven_multilingual_v2 has no Thai support."
+                ),
             },
             "stability": {
                 "type": "number",
-                "default": 0.5,
+                "default": 0.7,
                 "minimum": 0,
                 "maximum": 1,
             },
             "similarity_boost": {
                 "type": "number",
-                "default": 0.75,
+                "default": 0.85,
                 "minimum": 0,
                 "maximum": 1,
             },
@@ -113,7 +127,9 @@ class ElevenLabsTTS(BaseTool):
     side_effects = ["writes audio file to output_path", "calls ElevenLabs API"]
     user_visible_verification = ["Listen to generated audio for natural speech quality"]
 
-    DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+    # Brian — soft, clear male narration. Works well for Thai via eleven_v3.
+    DEFAULT_VOICE_ID = "nPczCjzI2devNBz1zQrb"
+    DEFAULT_MODEL_ID = "eleven_v3"
 
     def get_status(self) -> ToolStatus:
         if os.environ.get("ELEVENLABS_API_KEY"):
@@ -143,7 +159,12 @@ class ElevenLabsTTS(BaseTool):
 
         text = inputs["text"]
         voice_id = inputs.get("voice_id", self.DEFAULT_VOICE_ID)
-        model_id = inputs.get("model_id", "eleven_multilingual_v2")
+        model_id = inputs.get("model_id", self.DEFAULT_MODEL_ID)
+        # Thai requires eleven_v3 — multilingual_v2 silently mangles it.
+        thai_forced = False
+        if _contains_thai(text) and model_id != THAI_CAPABLE_MODEL:
+            model_id = THAI_CAPABLE_MODEL
+            thai_forced = True
         output_format = inputs.get("output_format", "mp3_44100_128")
 
         response = requests.post(
@@ -157,8 +178,8 @@ class ElevenLabsTTS(BaseTool):
                 "text": text,
                 "model_id": model_id,
                 "voice_settings": {
-                    "stability": inputs.get("stability", 0.5),
-                    "similarity_boost": inputs.get("similarity_boost", 0.75),
+                    "stability": inputs.get("stability", 0.7),
+                    "similarity_boost": inputs.get("similarity_boost", 0.85),
                     "style": inputs.get("style", 0.0),
                 },
             },
@@ -181,6 +202,7 @@ class ElevenLabsTTS(BaseTool):
                 "text_length": len(text),
                 "output": str(output_path),
                 "format": output_format,
+                "thai_model_forced": thai_forced,
             },
             artifacts=[str(output_path)],
             model=model_id,
